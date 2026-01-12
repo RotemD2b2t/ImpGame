@@ -1,2 +1,3 @@
 Flask>=2.3
 gunicorn
+Flask-Mail==0.10.0
