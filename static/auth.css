@@ -1,0 +1,164 @@
+/* =========================================
+   NEO AUTH DESIGN - Separate File
+   ========================================= */
+
+   :root {
+    /* Dark Mode Defaults */
+    --auth-bg: #0f172a;
+    --auth-card: rgba(30, 41, 59, 0.6);
+    --auth-text: #f8fafc;
+    --auth-input-bg: rgba(15, 23, 42, 0.5);
+    --auth-border: rgba(255, 255, 255, 0.1);
+    --auth-primary: #6366f1;
+    --auth-accent: #f43f5e;
+    --auth-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+}
+
+/* Light Mode Overrides */
+body.light-mode {
+    --auth-bg: #f0f9ff;
+    --auth-card: rgba(255, 255, 255, 0.8);
+    --auth-text: #1e293b;
+    --auth-input-bg: #ffffff;
+    --auth-border: rgba(0, 0, 0, 0.1);
+}
+
+body {
+    font-family: 'Heebo', "Segoe UI", Tahoma, sans-serif;
+    background-color: var(--auth-bg);
+    /* גרדיאנט רקע עדין ומודרני */
+    background-image: 
+        radial-gradient(circle at 5% 10%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 95% 90%, rgba(244, 63, 94, 0.15) 0%, transparent 40%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    direction: rtl;
+    color: var(--auth-text);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.auth-container {
+    background: var(--auth-card);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--auth-border);
+    padding: 50px 40px;
+    border-radius: 24px;
+    box-shadow: 0 20px 50px -10px rgba(0,0,0,0.3);
+    text-align: center;
+    width: 90%;
+    max-width: 400px;
+    transition: transform 0.3s, background-color 0.3s;
+    position: relative;
+}
+
+.auth-container:hover {
+    transform: translateY(-5px);
+}
+
+h1 {
+    margin-bottom: 30px;
+    font-size: 2.2rem;
+    font-weight: 800;
+    background: linear-gradient(to right, var(--auth-text), #94a3b8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+input {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    margin: 15px 0;
+    background: var(--auth-input-bg);
+    border: 1px solid var(--auth-border);
+    border-radius: 12px;
+    font-size: 1rem;
+    text-align: center;
+    color: var(--auth-text);
+    transition: all 0.3s;
+    font-family: inherit;
+}
+
+input:focus {
+    outline: none;
+    border-color: var(--auth-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+    transform: scale(1.01);
+}
+
+button {
+    width: 100%;
+    padding: 16px;
+    background: var(--auth-gradient);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 25px;
+    transition: all 0.3s;
+    box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.5);
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 30px -5px rgba(99, 102, 241, 0.6);
+}
+
+p {
+    margin-top: 25px;
+    font-size: 0.95rem;
+    color: var(--auth-text);
+    opacity: 0.8;
+}
+
+a {
+    color: var(--auth-accent);
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.3s;
+}
+
+a:hover {
+    text-decoration: underline;
+    filter: brightness(1.1);
+}
+
+/* Theme Toggle Button Style */
+#auth-theme-toggle {
+    position: absolute;
+    top: 20px;
+    right: 20px; /* Fixed position to Right */
+    left: auto;
+    width: 40px; /* Fixed width to prevent stretching */
+    height: 40px;
+    background: transparent;
+    border: 1px solid var(--auth-border);
+    color: var(--auth-text);
+    font-size: 1.2rem;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: 0.3s;
+    padding: 0;
+    margin: 0; /* Reset inherited margin */
+    box-shadow: none; /* Reset inherited shadow */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+#auth-theme-toggle:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.1);
+    transform: rotate(20deg);
+    box-shadow: none;
+}
+body.light-mode #auth-theme-toggle:hover {
+    background: rgba(0, 0, 0, 0.05);
+}

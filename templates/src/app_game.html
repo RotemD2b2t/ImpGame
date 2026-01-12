@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>המסך שלי</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Rubik', sans-serif;
+            background: #1a1a2e;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ccc;
+            padding: 8px 15px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        #waiting-msg {
+            font-size: 1.5rem;
+            opacity: 0.8;
+            animation: pulse 2s infinite;
+        }
+
+        #show-card-btn {
+            display: none;
+            background: linear-gradient(135deg, #e94560, #ff6b6b);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 50px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(233, 69, 96, 0.4);
+            transition: transform 0.2s;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        #show-card-btn:active {
+            transform: scale(0.95);
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: #fff;
+            color: #333;
+            padding: 40px 30px;
+            border-radius: 25px;
+            width: 100%;
+            max-width: 350px;
+            position: relative;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-align: center;
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: #eee;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .close-btn:hover { background: #ddd; color: #000; }
+
+        h1 { font-size: 2.5rem; margin: 10px 0; line-height: 1.2; }
+        p { font-size: 1.1rem; margin-top: 10px; color: #666; }
+        
+        .game-content-text { color: #333; } 
+
+        .sender-info { font-size: 0.9rem; margin-top: 20px; color: #999; border-top: 1px solid #eee; padding-top: 10px; }
+
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+
+    <a href="/" class="back-btn">חזור לתפריט</a>
+
+    <div id="waiting-msg">
+        <h3>שלום {{ user }}</h3>
+        <p>ממתין שהמנחה יתחיל את המשחק...</p>
+    </div>
+
+    <button id="show-card-btn" onclick="openModal()">צפה בקלף שלי</button>
+
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal()">✕</button>
+            <p>התפקיד/מילה שלך:</p>
+            <h1 id="game-content" class="game-content-text">---</h1>
+            <div id="sender-msg" class="sender-info"></div>
+        </div>
+    </div>
+
+    <script>
+        let lastId = null;
+        let currentData = null;
+
+        setInterval(async () => {
+            try {
+                const res = await fetch('/api/get_my_data');
+                const result = await res.json();
+
+                if (result.hasData) {
+                    if (result.data.id !== lastId) {
+                        lastId = result.data.id;
+                        currentData = result.data;
+                        updateContent(result.data);
+                    }
+                } 
+                else if (!result.hasData && currentData !== null) {
+                    resetScreen();
+                }
+
+            } catch (e) {
+                console.error("Error polling data", e);
+            }
+        }, 500);
+
+        function updateContent(data) {
+            document.getElementById('waiting-msg').style.display = 'none';
+            document.getElementById('show-card-btn').style.display = 'block';
+
+            const contentH1 = document.getElementById('game-content');
+            const senderDiv = document.getElementById('sender-msg');
+
+            contentH1.innerText = data.content;
+            
+            contentH1.className = 'game-content-text'; 
+
+            senderDiv.innerText = 'נשלח על ידי: ' + data.sender;
+            
+            if (navigator.vibrate) navigator.vibrate(200);
+        }
+
+        function resetScreen() {
+            currentData = null;
+            lastId = null;
+            closeModal();
+            document.getElementById('show-card-btn').style.display = 'none';
+            document.getElementById('waiting-msg').style.display = 'block';
+        }
+
+        function openModal() {
+            document.getElementById('modal-overlay').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modal-overlay').style.display = 'none';
+        }
+        
+        document.getElementById('modal-overlay').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+    </script>
+</body>
+</html>

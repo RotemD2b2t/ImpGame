@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>הרשמה</title>
+    <!-- פונט מודרני -->
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
+</head>
+<body>
+    <div class="auth-container">
+        <!-- כפתור החלפת נושא -->
+        <button id="auth-theme-toggle" onclick="toggleAuthTheme()" title="שנה מצב תצוגה">🌓</button>
+        
+        <h1>הרשמה למשחק</h1>
+        <input type="text" id="username" placeholder="בחר שם משתמש" autocomplete="username">
+        <input type="password" id="password" placeholder="בחר סיסמה" autocomplete="new-password">
+        <button onclick="register()">הירשם</button>
+        <p>כבר רשום? <a href="/login">התחבר כאן</a></p>
+        <p><a href="/">חזור לדף הבית</a></p>
+    </div>
+
+    <script>
+        // --- Theme Logic (Shared) ---
+        function applyAuthTheme() {
+            const savedTheme = localStorage.getItem('gameTheme');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-mode');
+            } else {
+                document.body.classList.remove('light-mode');
+            }
+        }
+
+        function toggleAuthTheme() {
+            document.body.classList.toggle('light-mode');
+            const isLight = document.body.classList.contains('light-mode');
+            localStorage.setItem('gameTheme', isLight ? 'light' : 'dark');
+        }
+
+        // Apply immediately
+        applyAuthTheme();
+
+        // --- Auth Logic ---
+        async function register() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if(!username || !password) return alert('נא למלא את כל השדות');
+
+            try {
+                const res = await fetch('/register', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username, password})
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    window.location.href = '/';
+                } else {
+                    alert(data.message);
+                }
+            } catch(e) {
+                alert('שגיאת תקשורת');
+            }
+        }
+
+        document.getElementById('password').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') register();
+        });
+    </script>
+</body>
+</html>
