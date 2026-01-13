@@ -1,0 +1,7 @@
+name = "games"
+compatibility_date = "2026-01-13"
+type = "javascript"
+
+# Use the newer [assets] section which Wrangler expects for static assets
+[assets]
+directory = "./public"
