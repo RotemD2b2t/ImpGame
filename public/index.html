@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Imposter Game</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+
+    <!-- Static CSS -->
+    <link rel="stylesheet" href="/unified_style.css">
+    <style> /* ensure body uses font if external blocked */ body{font-family: 'Heebo', Arial, sans-serif;} </style>
+</head>
+<body data-current-user="">
+    <!-- Toast Notification Container -->
+    <div id="toast-container"></div>
+
+    <div class="user-nav">
+        <div class="user-welcome">אורח</div>
+        <div class="nav-links">
+            <a href="/login">התחבר</a>
+            <button id="theme-toggle-btn" onclick="document.body.classList.toggle('light-mode')" title="החלף מצב תצוגה">🌓</button>
+        </div>
+    </div>
+
+    <main>
+        <div id="setup">
+            <h1>Imposter Game</h1>
+
+            <div class="mode-selector-grid" id="mode-selector">
+                <button class="mode-tab active" data-mode="wordNword">מילה ומילה</button>
+                <button class="mode-tab" data-mode="wordNhint">מילה ורמז</button>
+                <button class="mode-tab" data-mode="categoryNword">קטגוריה ומילים</button>
+                <button class="mode-tab" data-mode="categoryNcategory">קטגוריה וקטגוריה</button>
+            </div>
+
+            <div id="game-mode-container">
+                <label>
+                    <input type="radio" name="gameMode" value="gmail" checked> Gmail
+                </label>
+                <label>
+                    <input type="radio" name="gameMode" value="regular"> רגיל
+                </label>
+            </div>
+
+            <div id="dynamic-options" style="margin-bottom: 15px; width: 100%;">
+                <div id="hint-options" style="display:none; background: rgba(255,255,255,0.2); padding: 15px; border-radius: 10px;">
+                    <label><input type="checkbox" id="give-clue" style="width: auto; display: inline; margin: 0 0 0 10px;"> לתת רמז/ים לאימפוסטר</label><br>
+                    <div id="num-clues-container" style="margin-top: 10px; display: none;">
+                        <label id="num-clues">מספר רמזים:</label>
+                        <input type="number" id="num-clues2" value="1" min="1" max="5" style="display: inline-block; width: 60px; margin: 0;">
+                    </div>
+                    <label style="margin-top: 10px; display: block;"><input type="checkbox" id="give-clue-category" style="width: auto; display: inline; margin: 0 0 0 10px;"> לתת לאימפוסטר קטגוריה</label>
+                </div>
+                <div id="category-word-options" style="display:none; background: rgba(255,255,255,0.2); padding: 15px; border-radius: 10px;">
+                    <label>מספר מילים לאימפוסטר:</label>
+                    <input type="number" id="num-words-imposter" value="3" min="1" style="display: inline-block; width: 60px; margin: 0;">
+                </div>
+            </div>
+
+            <div id="inputs-container">
+                <input type="text" id="player-name" placeholder="שם שחקן">
+                <input type="text" id="player-email" placeholder="אימייל" style="display: none;">
+            </div>
+
+            <div style="margin-top: 10px; width: 100%;">
+                <button id="add-player">הוסף שחקן</button>
+                <button id="reset-game">איפוס</button>
+                <button id="clear-server-btn" style="background: linear-gradient(145deg, #c0392b, #a93226); display:none;">🗑️ נקה שרת</button>
+            </div>
+
+            <div style="margin-top: 20px; background: rgba(255,255,255,0.2); padding: 10px; border-radius: 10px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <label for="num-imposters">אימפוסטרים:</label>
+                <input type="number" id="num-imposters" value="1" min="1" style="width: 60px; margin: 0;">
+            </div>
+
+            <h3><button id="toggle-categories" style="background: rgba(255,255,255,0.2); border: none;">קטגוריות <span id="categories-arrow">&#9660;</span></button></h3>
+            <fieldset id="categories" style="display:none; width: 100%;">
+                <legend>בחר קטגוריות</legend>
+                <div id="categories-list"></div>
+            </fieldset>
+
+            <br>
+            <button id="start-game">התחל משחק</button>
+            <ul id="player-list"></ul>
+        </div>
+
+        <div id="game" style="display:none;">
+            <h1 id="current-player"></h1>
+            <p>העבר את המכשיר לשחקן הנוכחי</p>
+            <button id="reveal-button">פתח כרטיסייה</button>
+
+            <div id="host-area" style="display:none; margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 20px;">
+                <p style="font-size: 0.9rem; margin-bottom: 5px;">כלי מנחה:</p>
+                <button id="host-show-card-btn" class="gold-gradient-btn">הצג את הקלף שלי</button>
+            </div>
+        </div>
+
+        <div id="modal-overlay" class="modal-overlay hidden">
+            <div class="modal-content">
+                <button class="close-btn" id="close-modal-btn">✕</button>
+                <div id="secret-close-btn" class="secret-close-area" style="top: 0; right: 0; bottom: auto; left: auto;"></div>
+
+                <h3 id="modal-title">המידע שלך:</h3>
+                <div id="reveal-text" style="display: block;"></div>
+                <br>
+                <button id="next-button" style="display:none;">סגור והעבר לשחקן הבא</button>
+            </div>
+        </div>
+
+        <div id="game-order" style="display:none;">
+            <h1>סדר המשחק:</h1>
+            <ul id="order-list"></ul>
+            <div id="game-order-buttons" style="margin-top:20px;"></div>
+        </div>
+    </main>
+
+    <script src="/unified_logic.js"></script>
+</body>
+</html>
