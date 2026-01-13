@@ -7,28 +7,24 @@ from datetime import timedelta
 
 app = Flask(__name__, template_folder='templates/src/')
 app.secret_key = 'super_secret_key_for_session_management'
-# Keep session alive for 100 years
 app.permanent_session_lifetime = timedelta(days=36500)
 
 # --- הגדרות אימייל ---
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'noreplyapp289@gmail.com'
-app.config['MAIL_PASSWORD'] = 'ozhcibfpojlgnzvl'
+# Read mail configuration from environment variables for security and flexibility
+app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME', 'noreplyapp289@gmail.com')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD', 'ozhcibfpojlgnzvl')
 
 mail = Mail(app)
 
 DB_NAME = "users.db"
 
-# פונקציה ליצירת הטבלה בהתחלה (SQL רגיל)
 def init_db():
     if not os.path.exists(DB_NAME):
-        # יצירת חיבור למסד הנתונים
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
-
-        # יצירת טבלה עם פקודת SQL רגילה
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,15 +32,20 @@ def init_db():
                 password TEXT NOT NULL
             )
         ''')
+        conn.commit()
+        conn.close()
 
-        conn.commit() # שמירת השינויים
-        conn.close()  # סגירת החיבור
-
-# הפעלת יצירת המסד
 init_db()
 
-# משתנה למשחק (נשאר בזיכרון כמו קודם)
+# --- ניהול מצב משחק בזיכרון ---
+
+# שומר מה כל שחקן אמור לראות (הזמנה או תפקיד)
+# Mapped by username -> { type: 'invite'/'imposter'/'citizen', content: '...', sender: 'host', id: 'random' }
 active_game_states = {}
+
+# שומר את סטטוס השחקנים בלובי עבור המנחה (מי אישר ומי לא)
+# Mapped by host_username -> { player_username: 'joined' }
+lobby_status = {}
 
 @app.route('/')
 def home():
@@ -57,23 +58,15 @@ def login():
         data = request.json
         username = data.get('username')
         password = data.get('password')
-
-        # חיבור למסד
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
-
-        # שאילתת SQL לבדיקת המשתמש
         cursor.execute("SELECT password FROM users WHERE username = ?", (username,))
-        result = cursor.fetchone() # שליפת התוצאה הראשונה
-
+        result = cursor.fetchone()
         conn.close()
-
-        # result יהיה טאפל (password,) או None אם לא נמצא
         if result and result[0] == password:
             session['username'] = username
             session.permanent = True
             return jsonify({'success': True})
-
         return jsonify({'success': False, 'message': 'שם משתמש או סיסמה שגויים'})
     return render_template('login.html')
 
@@ -83,26 +76,19 @@ def register():
         data = request.json
         username = data.get('username')
         password = data.get('password')
-
         try:
             conn = sqlite3.connect(DB_NAME)
             cursor = conn.cursor()
-
-            # ניסיון להכניס משתמש חדש עם SQL רגיל
             cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
             conn.commit()
             conn.close()
-
             session['username'] = username
             session.permanent = True
             return jsonify({'success': True})
-
         except sqlite3.IntegrityError:
-            # שגיאה זו קופצת אם המשתמש כבר קיים (בגלל ה-UNIQUE שהגדרנו)
             return jsonify({'success': False, 'message': 'שם המשתמש כבר קיים'})
         except Exception as e:
             return jsonify({'success': False, 'message': str(e)})
-
     return render_template('register.html')
 
 @app.route('/logout')
@@ -116,6 +102,8 @@ def app_game():
         return redirect(url_for('login'))
     return render_template('app_game.html', user=session.get('username'))
 
+# --- לוגיקת משחק ומיילים ---
+
 @app.route('/send_roles', methods=['POST'])
 def send_roles():
     data = request.json
@@ -127,7 +115,7 @@ def send_roles():
             for p in players:
                 if not p.get('email'):
                     continue
-
+                
                 content = p.get('wordData', '')
                 role = p.get('role')
                 name = p.get('name')
@@ -140,7 +128,7 @@ def send_roles():
                 msg = Message(subject="Imposter Game - המידע שלך למשחק",
                               sender=app.config['MAIL_USERNAME'],
                               recipients=[p['email']])
-
+                
                 msg.html = f"""
                 <div dir="rtl" style="font-family: Arial, sans-serif; text-align: center; background-color: #f9f9f9; padding: 20px;">
                     <div style="background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
@@ -157,55 +145,113 @@ def send_roles():
                 conn.send(msg)
         return jsonify({'success': True})
     except Exception as e:
-        print(f"Email error: {e}")
         return jsonify({'success': False, 'message': str(e)})
+
+# --- API לאפליקציה ---
 
 @app.route('/api/send_game_data', methods=['POST'])
 def send_game_data():
+    """ שליחת תפקידים או הזמנות מהמנחה לשחקנים """
     if 'username' not in session:
         return jsonify({'success': False, 'message': 'לא מחובר'}), 401
-
+    
     data = request.json
     players_data = data.get('playersData', [])
+    host_user = session['username']
+    
+    # אתחול הלובי של המנחה אם הוא שולח הזמנות
+    if host_user not in lobby_status:
+        lobby_status[host_user] = {}
 
     for player in players_data:
         target_user = player.get('username')
         content = player.get('content')
-        msg_type = player.get('type', 'text')
+        msg_type = player.get('type', 'text') # invite, imposter, citizen
+
+        # בדיקה האם השחקן כבר במשחק אחר (רק עבור הזמנות)
+        if msg_type == 'invite':
+            if target_user in active_game_states:
+                # אם יש לו דאטה והוא לא במשחק של המנחה הנוכחי
+                existing_data = active_game_states[target_user]
+                if existing_data.get('sender') != host_user:
+                     return jsonify({'success': False, 'message': f'השחקן {target_user} כבר נמצא במשחק פעיל אחר'})
 
         active_game_states[target_user] = {
             'content': content,
             'type': msg_type,
-            'sender': session['username'],
+            'sender': host_user,
             'id': secrets.token_hex(4)
         }
-
+    
     return jsonify({'success': True})
 
 @app.route('/api/get_my_data')
 def get_my_data():
+    """ השחקן בודק מה קיבל """
     if 'username' not in session:
         return jsonify({'error': 'Not logged in'}), 401
-
+        
     user = session['username']
     data = active_game_states.get(user)
-
+    
     if data:
         return jsonify({'hasData': True, 'data': data})
     else:
         return jsonify({'hasData': False})
 
+@app.route('/api/update_player_status', methods=['POST'])
+def update_player_status():
+    """ השחקן מאשר הזמנה או יוצא """
+    if 'username' not in session:
+        return jsonify({'success': False}), 401
+    
+    user = session['username']
+    data = request.json
+    status = data.get('status') # 'joined', 'left'
+    host_name = data.get('host')
+
+    if host_name:
+        if host_name not in lobby_status:
+            lobby_status[host_name] = {}
+        
+        if status == 'joined':
+            lobby_status[host_name][user] = 'joined'
+        elif status == 'left':
+            lobby_status[host_name].pop(user, None)
+            # מחיקת המידע של השחקן (ביטול ההזמנה)
+            if user in active_game_states:
+                del active_game_states[user]
+
+    return jsonify({'success': True})
+
+@app.route('/api/check_lobby', methods=['GET'])
+def check_lobby():
+    """ המנחה בודק מי אישר """
+    if 'username' not in session:
+        return jsonify({'success': False}), 401
+        
+    host_user = session['username']
+    # מחזיר את רשימת השחקנים שאישרו בלובי של המנחה
+    approved_players = list(lobby_status.get(host_user, {}).keys())
+    
+    return jsonify({'success': True, 'approved_players': approved_players})
+
 @app.route('/api/clear_game_data', methods=['POST'])
 def clear_game_data():
     if 'username' not in session:
         return jsonify({'success': False}), 401
-
+        
     host_user = session['username']
+    
+    # ניקוי המידע שנשלח לשחקנים
     users_to_clear = [user for user, data in active_game_states.items() if data.get('sender') == host_user]
-
     for user in users_to_clear:
         active_game_states.pop(user, None)
-
+    
+    # ניקוי הלובי
+    if host_user in lobby_status:
+        lobby_status[host_user] = {}
+        
     return jsonify({'success': True, 'cleared_count': len(users_to_clear)})
 
 if __name__ == '__main__':
