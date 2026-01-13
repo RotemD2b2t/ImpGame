@@ -1,0 +1,32 @@
+#!/bin/sh
+set -e
+
+# Simple build step for Cloudflare Pages: prepare static output in 'public/'
+# Copies the static assets and creates a minimal index.html.
+
+echo "Preparing static output in public/"
+rm -rf public
+mkdir -p public
+cp -r static/* public/ || true
+
+# Create a minimal index.html if not present
+if [ ! -f public/index.html ]; then
+  cat > public/index.html <<'HTML'
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>ImpGame</title>
+  <link rel="stylesheet" href="/unified_style.css">
+</head>
+<body>
+  <h1>ImpGame</h1>
+  <p>זו גרסה סטטית של הפרויקט המתאימה ל־Cloudflare Pages. לפריסה דינמית יש להשתמש ב‑Render/Fly/Heroku.</p>
+  <script src="/unified_logic.js"></script>
+</body>
+</html>
+HTML
+fi
+
+echo "Static build ready in public/"
